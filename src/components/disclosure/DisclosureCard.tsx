@@ -43,7 +43,7 @@ export function DisclosureCard({ disclosure, onClick }: DisclosureCardProps): Re
     >
       <div className="flex justify-between items-start mb-3">
         <div>
-          <div className="flex flex-col mb-2">
+          <div className="flex flex-col mb-2 w-50">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700 mr-2">공시일</span>
               <span className="text-sm text-gray-500">{formattedData.disclosureDate}</span>

@@ -49,14 +49,13 @@ function transformDisclosureData(data: DisclosureJsonData, exchange: ExchangeCod
         ? item.details.categoryId[0]
         : '';
 
-    // 카테고리 ID를 한글 이름으로 변환
     const categoryName = getCategoryName(categoryId, exchange);
 
     return {
       id: item.id,
       date: item.dataDate,
-      stockName: item.korName,
-      stockCode: Array.isArray(item.details.secCode) ? item.details.secCode[0] : '',
+      stockName: `${item.korName} (${item.details.secName[0]})`,
+      stockCode: item.details.secCode[0],
       exchange,
       topics,
       category: categoryName,
@@ -76,7 +75,6 @@ function filterByDateRange(
   if (!startDate && !endDate) return disclosures;
 
   return disclosures.filter((disclosure) => {
-    // 날짜 비교를 위해 dateUtils의 함수 사용
     if (startDate && endDate) {
       // 시작일과 종료일 모두 있는 경우
       return (

@@ -39,15 +39,8 @@ export default async function Home() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        {/* 클라이언트 컴포넌트로 필터링 및 페이지네이션 로직 분리 */}
         <DisclosureContainer initialData={initialData} />
       </main>
-
-      <footer className="bg-white border-t mt-10 py-6">
-        <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
-          © 2025 크래프트 테크놀로지스. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 }
