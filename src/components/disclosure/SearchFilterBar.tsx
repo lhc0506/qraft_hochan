@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { parseDate, DateRange, createDateRange } from '@/utils/dateUtils';
+import DateUtils, { DateRange } from '@/utils/dateUtils';
 import { Exchange } from '@/types/common';
 
 type SearchFilterBarProps = {
@@ -10,7 +10,7 @@ type SearchFilterBarProps = {
 
 export function SearchFilterBar({ onFilterChange }: SearchFilterBarProps) {
   const [exchangeType, setExchangeType] = useState<Exchange>('ALL');
-  const [dateRange, setDateRange] = useState<DateRange>(createDateRange(null, null));
+  const [dateRange, setDateRange] = useState<DateRange>(DateUtils.createDateRange(null, null));
 
   const handleExchangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const exchange = e.target.value as Exchange;
@@ -19,14 +19,14 @@ export function SearchFilterBar({ onFilterChange }: SearchFilterBarProps) {
   };
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const startDate = e.target.value ? parseDate(e.target.value) : null;
+    const startDate = e.target.value ? DateUtils.parseDate(e.target.value) : null;
     const newDateRange = { ...dateRange, startDate };
     setDateRange(newDateRange);
     onFilterChange(exchangeType, newDateRange);
   };
 
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const endDate = e.target.value ? parseDate(e.target.value) : null;
+    const endDate = e.target.value ? DateUtils.parseDate(e.target.value) : null;
     const newDateRange = { ...dateRange, endDate };
     setDateRange(newDateRange);
     onFilterChange(exchangeType, newDateRange);
