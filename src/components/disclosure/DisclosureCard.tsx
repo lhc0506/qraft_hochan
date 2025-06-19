@@ -10,7 +10,7 @@ type DisclosureCardProps = {
 };
 
 export function DisclosureCard({ disclosure, onClick }: DisclosureCardProps): React.ReactNode {
-  const { date, stockName, stockCode, exchange, topics, category, title, content } = disclosure;
+  const { date, secName, secCode, exchange, topics, category, title, content } = disclosure;
 
   const formattedData = React.useMemo(() => {
     const disclosureDate = DateUtils.convertYYYYMMDDHHMMSSFormat(date);
@@ -54,9 +54,9 @@ export function DisclosureCard({ disclosure, onClick }: DisclosureCardProps): Re
             </div>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm text-gray-500">{stockCode}</span>
+            <span className="text-sm text-gray-500">{secCode}</span>
             <div className="flex items-center">
-              <span className="text-sm text-gray-700 mr-2">{stockName}</span>
+              <span className="text-sm text-gray-700 mr-2">{secName}</span>
               <span className="mx-2 text-gray-300">|</span>
               <span className="text-sm text-gray-600 bg-gray-50 px-2 py-0.5 rounded">
                 {category}

@@ -5,8 +5,8 @@ export type Exchange = ExchangeCode | 'ALL';
 export type Disclosure = {
   id: string;
   date: string;
-  stockName: string;
-  stockCode: string;
+  secName: string;
+  secCode: string;
   exchange: ExchangeCode;
   topics: string[];
   category: string;

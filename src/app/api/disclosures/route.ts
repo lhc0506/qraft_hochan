@@ -5,11 +5,9 @@ import { Disclosure, Exchange, ExchangeCode } from '@/types/common';
 import DateUtils from '@/utils/dateUtils';
 import { getCategoryName } from '@/data/categories';
 
-// 페이지당 아이템 수
 const ITEMS_PER_PAGE = 10;
 
-// JSON 데이터 타입 정의
-type DisclosureJsonItem = {
+interface DisclosureJsonItem {
   id: string;
   dataDate: string;
   korName: string;
@@ -25,37 +23,82 @@ type DisclosureJsonItem = {
     summarizeLongKor: string;
     categoryKor?: string;
   };
-};
+}
 
-type DisclosureJsonData = {
+interface DisclosureJsonData {
   data: {
     getDisclosure: DisclosureJsonItem[];
   };
-};
+}
 
-// JSON 데이터를 API 응답 형식으로 변환
+interface ApiResponse {
+  disclosures: Disclosure[];
+  hasMore: boolean;
+  total: number;
+  error?: string;
+}
+
+interface QueryParams {
+  exchange: Exchange;
+  startDate?: string;
+  endDate?: string;
+  page: number;
+}
+
+/**
+ * 요청 파라미터 추출 및 검증
+ */
+function extractQueryParams(request: NextRequest): QueryParams {
+  const searchParams = request.nextUrl.searchParams;
+
+  // 파라미터 추출 및 기본값 설정
+  const exchange = (searchParams.get('exchange') as Exchange) || 'ALL';
+  const startDate = searchParams.get('startDate') || undefined;
+  const endDate = searchParams.get('endDate') || undefined;
+  const pageParam = searchParams.get('page');
+
+  // 페이지 번호 검증
+  let page = 1;
+  if (pageParam) {
+    const parsedPage = parseInt(pageParam, 10);
+    page = !isNaN(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  }
+
+  return { exchange, startDate, endDate, page };
+}
+
+/**
+ * 카테고리 ID 추출 함수
+ */
+function extractCategoryId(categoryId: string | string[]): string {
+  if (typeof categoryId === 'string') {
+    return categoryId;
+  }
+
+  return Array.isArray(categoryId) && categoryId.length > 0 ? categoryId[0] : '';
+}
+
+/**
+ * JSON 데이터를 API 응답 형식으로 변환
+ */
 function transformDisclosureData(data: DisclosureJsonData, exchange: ExchangeCode): Disclosure[] {
   if (!data?.data?.getDisclosure || !Array.isArray(data.data.getDisclosure)) {
     return [];
   }
 
   return data.data.getDisclosure.map((item) => {
-    const topics = item.analysisDetails.topicKor.split(',');
-
-    const categoryId =
-      typeof item.details.categoryId === 'string'
-        ? item.details.categoryId
-        : Array.isArray(item.details.categoryId) && item.details.categoryId.length > 0
-        ? item.details.categoryId[0]
-        : '';
-
+    const topics = item.analysisDetails.topicKor.split(',').map((topic) => topic.trim());
+    const categoryId = extractCategoryId(item.details.categoryId);
     const categoryName = getCategoryName(categoryId, exchange);
+
+    const secName = item.details.secName?.[0] || '';
+    const secCode = item.details.secCode?.[0] || '';
 
     return {
       id: item.id,
       date: item.dataDate,
-      stockName: `${item.korName} (${item.details.secName[0]})`,
-      stockCode: item.details.secCode[0],
+      secName: `${item.korName} (${secName})`,
+      secCode,
       exchange,
       topics,
       category: categoryName,
@@ -66,7 +109,9 @@ function transformDisclosureData(data: DisclosureJsonData, exchange: ExchangeCod
   });
 }
 
-// 날짜 필터링 함수
+/**
+ * 날짜 필터링 함수
+ */
 function filterByDateRange(
   disclosures: Disclosure[],
   startDate?: string,
@@ -76,16 +121,17 @@ function filterByDateRange(
 
   return disclosures.filter((disclosure) => {
     if (startDate && endDate) {
-      // 시작일과 종료일 모두 있는 경우
       return (
         DateUtils.isSameOrAfterDay(disclosure.date, startDate) &&
         DateUtils.isSameOrBeforeDay(disclosure.date, endDate)
       );
-    } else if (startDate) {
-      // 시작일만 있는 경우
+    }
+
+    if (startDate) {
       return DateUtils.isSameOrAfterDay(disclosure.date, startDate);
-    } else if (endDate) {
-      // 종료일만 있는 경우
+    }
+
+    if (endDate) {
       return DateUtils.isSameOrBeforeDay(disclosure.date, endDate);
     }
 
@@ -93,54 +139,94 @@ function filterByDateRange(
   });
 }
 
-// GET 요청 처리
-export async function GET(request: NextRequest) {
-  // URL 파라미터 추출
-  const searchParams = request.nextUrl.searchParams;
-  const exchange = (searchParams.get('exchange') as Exchange) || 'ALL';
-  const startDate = searchParams.get('startDate') || undefined;
-  const endDate = searchParams.get('endDate') || undefined;
-  const page = Number(searchParams.get('page')) || 1;
+/**
+ * 날짜 기준 내림차순 정렬 (최신순)
+ */
+function sortByDateDescending(disclosures: Disclosure[]): Disclosure[] {
+  return [...disclosures].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
 
-  // 데이터 변환
-  let allDisclosures: Disclosure[] = [];
-
-  // 거래소 필터링
-  if (exchange === 'SHENZHEN' || exchange === 'ALL') {
-    const shenzhenDisclosures = transformDisclosureData(
-      shenzhenData as DisclosureJsonData,
-      'SHENZHEN'
-    );
-    allDisclosures = [...allDisclosures, ...shenzhenDisclosures];
-  }
-
-  if (exchange === 'HONGKONG' || exchange === 'ALL') {
-    const hongkongDisclosures = transformDisclosureData(
-      hongkongData as DisclosureJsonData,
-      'HONGKONG'
-    );
-    allDisclosures = [...allDisclosures, ...hongkongDisclosures];
-  }
-
-  // 날짜 필터링 적용
-  const filteredByDate = filterByDateRange(allDisclosures, startDate, endDate);
-
-  // 정렬: 최신 데이터가 먼저 나오도록
-  const sortedDisclosures = filteredByDate.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  // 페이지네이션 적용
+/**
+ * 페이지네이션 적용
+ */
+function applyPagination(
+  disclosures: Disclosure[],
+  page: number
+): { paginatedData: Disclosure[]; hasMore: boolean } {
   const startIndex = (page - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedDisclosures = sortedDisclosures.slice(startIndex, endIndex);
 
-  // 더 불러올 데이터가 있는지 확인
-  const hasMore = endIndex < sortedDisclosures.length;
+  return {
+    paginatedData: disclosures.slice(startIndex, endIndex),
+    hasMore: endIndex < disclosures.length,
+  };
+}
 
-  return NextResponse.json({
-    disclosures: paginatedDisclosures,
-    hasMore,
-    total: sortedDisclosures.length,
-  });
+/**
+ * 거래소별 공시 데이터 가져오기
+ */
+function getDisclosuresByExchange(exchange: Exchange): Disclosure[] {
+  let disclosures: Disclosure[] = [];
+
+  try {
+    if (exchange === 'SHENZHEN' || exchange === 'ALL') {
+      const shenzhenDisclosures = transformDisclosureData(
+        shenzhenData as DisclosureJsonData,
+        'SHENZHEN'
+      );
+      disclosures = [...disclosures, ...shenzhenDisclosures];
+    }
+
+    if (exchange === 'HONGKONG' || exchange === 'ALL') {
+      const hongkongDisclosures = transformDisclosureData(
+        hongkongData as DisclosureJsonData,
+        'HONGKONG'
+      );
+      disclosures = [...disclosures, ...hongkongDisclosures];
+    }
+
+    return disclosures;
+  } catch (error) {
+    console.error('Error fetching disclosure data:', error);
+    return [];
+  }
+}
+
+/**
+ * GET 요청 처리
+ */
+export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse>> {
+  try {
+    // 요청 파라미터 추출
+    const { exchange, startDate, endDate, page } = extractQueryParams(request);
+
+    // 거래소별 데이터 가져오기
+    const allDisclosures = getDisclosuresByExchange(exchange);
+
+    // 날짜 필터링 적용
+    const filteredByDate = filterByDateRange(allDisclosures, startDate, endDate);
+
+    // 정렬: 최신 데이터가 먼저 나오도록
+    const sortedDisclosures = sortByDateDescending(filteredByDate);
+
+    // 페이지네이션 적용
+    const { paginatedData, hasMore } = applyPagination(sortedDisclosures, page);
+
+    return NextResponse.json({
+      disclosures: paginatedData,
+      hasMore,
+      total: sortedDisclosures.length,
+    });
+  } catch (error) {
+    console.error('Error processing disclosure request:', error);
+    return NextResponse.json(
+      {
+        disclosures: [],
+        hasMore: false,
+        total: 0,
+        error: 'Failed to process disclosure request',
+      },
+      { status: 500 }
+    );
+  }
 }
