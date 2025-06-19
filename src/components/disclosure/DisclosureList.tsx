@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import DisclosureCard from './DisclosureCard';
 import { Disclosure } from '@/types/common';
+import useInfiniteScroll from '@/hooks/useInfiniteScroll';
 
 type DisclosureListProps = {
   disclosures: Disclosure[];
@@ -19,36 +20,13 @@ export function DisclosureList({
   onLoadMore,
   onDisclosureClick,
 }: DisclosureListProps): React.ReactNode {
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  // 무한 스크롤 구현
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          onLoadMore();
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [isLoading, hasMore, onLoadMore]);
+  // 무한 스크롤 구현을 커스텀 훅으로 분리
+  const { loadMoreRef } = useInfiniteScroll({
+    isLoading,
+    hasMore,
+    onLoadMore,
+    threshold: 0.5
+  });
 
   if (disclosures.length === 0 && !isLoading) {
     return (
