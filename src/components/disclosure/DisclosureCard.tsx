@@ -12,21 +12,29 @@ type DisclosureCardProps = {
 export function DisclosureCard({ disclosure, onClick }: DisclosureCardProps): React.ReactNode {
   const { date, stockName, stockCode, exchange, topics, category, title, content } = disclosure;
 
-  // 공시일과 현지시간 포맷팅
-  const disclosureDate = DateUtils.convertYYYYMMDDHHMMSSFormat(date);
-  const localTime = DateUtils.convertLocalTime(date, exchange);
+  const formattedData = React.useMemo(() => {
+    const disclosureDate = DateUtils.convertYYYYMMDDHHMMSSFormat(date);
+    const localTime = DateUtils.convertLocalTime(date, exchange);
 
-  // 토픽은 최대 3개까지만 표시
-  const displayTopics = topics.slice(0, 3);
+    const displayTopics = topics.slice(0, 3);
 
-  // 내용은 미리보기로 200자까지만 표시
-  const previewContent = content.length > 200 ? `${content.substring(0, 200)}...` : content;
+    const previewContent = content.length > 200 ? `${content.substring(0, 200)}...` : content;
 
-  const handleClick = () => {
+    return {
+      disclosureDate,
+      localTime,
+      displayTopics,
+      previewContent,
+      exchangeName: exchange === 'SHENZHEN' ? '심천' : '홍콩',
+    };
+  }, [date, exchange, topics, content]);
+
+  // 클릭 핸들러
+  const handleClick = React.useCallback(() => {
     if (onClick) {
       onClick(disclosure);
     }
-  };
+  }, [onClick, disclosure]);
 
   return (
     <div
@@ -36,41 +44,49 @@ export function DisclosureCard({ disclosure, onClick }: DisclosureCardProps): Re
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="flex flex-col mb-2">
-            <div className="flex items-center">
+            <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700 mr-2">공시일</span>
-              <span className="text-sm text-gray-500">{disclosureDate}</span>
+              <span className="text-sm text-gray-500">{formattedData.disclosureDate}</span>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700 mr-2">현지시간</span>
-              <span className="text-sm text-gray-500">{localTime}</span>
+              <span className="text-sm text-gray-500">{formattedData.localTime}</span>
             </div>
           </div>
-          <h3 className="font-medium text-lg mt-1">{title}</h3>
+          <div className="flex flex-col">
+            <span className="text-sm text-gray-500">{stockCode}</span>
+            <div className="flex items-center">
+              <span className="text-sm text-gray-700 mr-2">{stockName}</span>
+              <span className="mx-2 text-gray-300">|</span>
+              <span className="text-sm text-gray-600 bg-gray-50 px-2 py-0.5 rounded">
+                {category}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-          {exchange === 'SHENZHEN' ? '심천' : '홍콩'}
+        <div>
+          <div className="mb-2 flex flex-wrap gap-2">
+            {formattedData.displayTopics.map((topic: string, index: number) => (
+              <span
+                key={index}
+                className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded"
+              >
+                {topic}
+              </span>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <div className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded w-fit">
+              {formattedData.exchangeName}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center mb-3">
-        <span className="font-medium text-gray-700 mr-2">{stockName}</span>
-        <span className="text-sm text-gray-500">{stockCode}</span>
-        <span className="mx-2 text-gray-300">|</span>
-        <span className="text-sm text-gray-600 bg-gray-50 px-2 py-0.5 rounded">{category}</span>
+      <div className="flex flex-col gap-2">
+        <h3 className="font-medium text-lg mt-1">{title}</h3>
+        <p className="text-gray-600 text-sm">{formattedData.previewContent}</p>
       </div>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        {displayTopics.map((topic, index) => (
-          <span
-            key={index}
-            className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded"
-          >
-            {topic}
-          </span>
-        ))}
-      </div>
-
-      <p className="text-gray-600 text-sm">{previewContent}</p>
     </div>
   );
 }
